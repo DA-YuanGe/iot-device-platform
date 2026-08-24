@@ -1,7 +1,9 @@
 package com.iot.gateway;
 
 import com.iot.protocol.DeviceMessage;
-import com.iot.protocol.MessageType;
+import com.iot.service.event.DeviceEvent;
+import com.iot.service.event.DeviceEventPublisher;
+import com.iot.service.event.DeviceEventType;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
@@ -13,7 +15,15 @@ public class DeviceConnectionHandler
     private final DeviceSessionManager sessionManager =
             DeviceSessionManager.getInstance();
 
+    private final DeviceEventPublisher eventPublisher;
+
     private String deviceId;
+
+    public DeviceConnectionHandler(
+            DeviceEventPublisher eventPublisher) {
+
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
@@ -45,39 +55,62 @@ public class DeviceConnectionHandler
                 ", payload=" + payload
         );
 
-        /*
-         * 第一次收到设备消息时识别设备。
-         */
         if (deviceId == null && !payload.isBlank()) {
 
             deviceId = payload;
+
+            boolean alreadyOnline =
+                    sessionManager.isOnline(deviceId);
 
             sessionManager.register(
                     deviceId,
                     ctx.channel()
             );
 
-            return;
+            eventPublisher.publish(
+                    new DeviceEvent(
+                            deviceId,
+                            alreadyOnline
+                                    ? DeviceEventType.RECONNECTED
+                                    : DeviceEventType.ONLINE
+                    )
+            );
         }
 
-        /*
-         * 已经建立会话后，
-         * 心跳只更新最近心跳时间。
-         */
-        if (deviceId != null
-                && message.getType() == MessageType.HEARTBEAT) {
+        if (deviceId != null &&
+                message.getType() ==
+                        com.iot.protocol.MessageType.HEARTBEAT) {
+
+            boolean wasOffline =
+                    sessionManager.getSession(deviceId) != null &&
+                    !sessionManager.getSession(deviceId).isOnline();
 
             sessionManager.heartbeat(deviceId);
 
-            System.out.println(
-                    "[SESSION] heartbeat updated: " +
-                    deviceId
-            );
+            if (wasOffline) {
+
+                eventPublisher.publish(
+                        new DeviceEvent(
+                                deviceId,
+                                DeviceEventType.RECONNECTED
+                        )
+                );
+
+            } else {
+
+                eventPublisher.publish(
+                        new DeviceEvent(
+                                deviceId,
+                                DeviceEventType.HEARTBEAT
+                        )
+                );
+            }
         }
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) {
+    public void channelInactive(
+            ChannelHandlerContext ctx) {
 
         System.out.println(
                 "[DEVICE] disconnected: " +
@@ -85,7 +118,7 @@ public class DeviceConnectionHandler
         );
 
         if (deviceId != null) {
-            sessionManager.remove(deviceId);
+            sessionManager.remove(deviceId, ctx.channel());
         }
     }
 
@@ -97,7 +130,7 @@ public class DeviceConnectionHandler
         cause.printStackTrace();
 
         if (deviceId != null) {
-            sessionManager.remove(deviceId);
+            sessionManager.remove(deviceId, ctx.channel());
         }
 
         ctx.close();

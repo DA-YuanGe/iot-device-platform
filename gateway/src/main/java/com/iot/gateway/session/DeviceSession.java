@@ -73,10 +73,31 @@ public class DeviceSession {
         return online;
     }
 
+    /**
+     * 收到设备心跳。
+     *
+     * 如果设备之前处于离线状态，
+     * 收到新的心跳后自动恢复在线。
+     */
     public void heartbeat() {
+
+        boolean wasOffline = !this.online;
+
         this.lastHeartbeatTime = LocalDateTime.now();
+        this.online = true;
+
+        if (wasOffline) {
+
+            System.out.println(
+                    "[SESSION] device back online: " +
+                    deviceId
+            );
+        }
     }
 
+    /**
+     * 标记设备离线。
+     */
     public void offline() {
         this.online = false;
     }

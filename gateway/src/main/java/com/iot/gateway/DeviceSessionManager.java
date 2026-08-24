@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * 负责维护：
  * deviceId -> DeviceSession
+ *
+ * 同一个 deviceId 同一时间只允许存在一个有效会话。
  */
 public class DeviceSessionManager {
 
@@ -29,6 +31,9 @@ public class DeviceSessionManager {
 
     /**
      * 注册设备连接。
+     *
+     * 如果设备已经存在旧连接，
+     * 则关闭旧连接并使用新连接建立会话。
      */
     public void register(
             String deviceId,
@@ -38,39 +43,73 @@ public class DeviceSessionManager {
             return;
         }
 
-        DeviceSession session =
+        DeviceSession newSession =
                 new DeviceSession(deviceId, channel);
 
-        sessions.put(deviceId, session);
+        DeviceSession oldSession =
+                sessions.put(deviceId, newSession);
+
+        if (oldSession != null) {
+
+            Channel oldChannel =
+                    oldSession.getChannel();
+
+            if (oldChannel != channel &&
+                    oldChannel.isActive()) {
+
+                System.out.println(
+                        "[SESSION] duplicate device connection: " +
+                        deviceId +
+                        ", closing old channel=" +
+                        oldChannel.id()
+                );
+
+                oldSession.offline();
+
+                oldChannel.close();
+            }
+        }
 
         System.out.println(
                 "[SESSION] device registered: " +
                 deviceId +
                 ", remote=" +
-                session.getRemoteAddress()
+                newSession.getRemoteAddress()
         );
     }
 
     /**
      * 移除设备连接。
+     *
+     * 只有当前会话对应的连接才能真正移除设备。
      */
-    public void remove(String deviceId) {
+    public void remove(
+            String deviceId,
+            Channel channel) {
 
-        if (deviceId == null) {
+        if (deviceId == null || channel == null) {
             return;
         }
 
-        DeviceSession session = sessions.remove(deviceId);
+        sessions.computeIfPresent(
+                deviceId,
+                (key, session) -> {
 
-        if (session != null) {
+                    if (session.getChannel() == channel) {
 
-            session.offline();
+                        session.offline();
 
-            System.out.println(
-                    "[SESSION] device removed: " +
-                    deviceId
-            );
-        }
+                        System.out.println(
+                                "[SESSION] device removed: " +
+                                deviceId
+                        );
+
+                        return null;
+                    }
+
+                    return session;
+                }
+        );
     }
 
     /**
@@ -85,7 +124,8 @@ public class DeviceSessionManager {
      */
     public Channel getChannel(String deviceId) {
 
-        DeviceSession session = sessions.get(deviceId);
+        DeviceSession session =
+                sessions.get(deviceId);
 
         return session != null
                 ? session.getChannel()
@@ -97,7 +137,8 @@ public class DeviceSessionManager {
      */
     public boolean isOnline(String deviceId) {
 
-        DeviceSession session = sessions.get(deviceId);
+        DeviceSession session =
+                sessions.get(deviceId);
 
         return session != null
                 && session.isOnline()
@@ -109,7 +150,8 @@ public class DeviceSessionManager {
      */
     public void heartbeat(String deviceId) {
 
-        DeviceSession session = sessions.get(deviceId);
+        DeviceSession session =
+                sessions.get(deviceId);
 
         if (session != null) {
             session.heartbeat();
@@ -119,6 +161,14 @@ public class DeviceSessionManager {
     /**
      * 当前在线设备数量。
      */
+    /**
+     * 获取当前所有设备会话。
+     */
+    public Map<String, DeviceSession> getSessions() {
+        return sessions;
+    }
+
+
     public int onlineCount() {
         return sessions.size();
     }

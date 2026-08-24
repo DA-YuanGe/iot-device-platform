@@ -16,9 +16,16 @@
     <name>iot-gateway</name>
 
     <dependencies>
+
         <dependency>
             <groupId>com.iot</groupId>
             <artifactId>protocol</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.iot</groupId>
+            <artifactId>service</artifactId>
             <version>${project.version}</version>
         </dependency>
 
