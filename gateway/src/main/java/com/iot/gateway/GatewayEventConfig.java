@@ -1,5 +1,7 @@
 package com.iot.gateway;
 
+import com.iot.service.alarm.DeviceAlarmEventListener;
+import com.iot.service.alarm.DeviceAlarmService;
 import com.iot.service.event.DeviceEventPublisher;
 import com.iot.service.event.LoggingDeviceEventListener;
 import com.iot.service.status.DeviceStatusService;
@@ -24,7 +26,8 @@ public class GatewayEventConfig {
 
     @Bean
     public DeviceEventPublisher deviceEventPublisher(
-            DeviceStatusService deviceStatusService) {
+            DeviceStatusService deviceStatusService,
+            DeviceAlarmService deviceAlarmService) {
 
         DeviceEventPublisher publisher =
                 new DeviceEventPublisher();
@@ -35,6 +38,12 @@ public class GatewayEventConfig {
 
         publisher.addListener(
                 deviceStatusService
+        );
+
+        publisher.addListener(
+                new DeviceAlarmEventListener(
+                        deviceAlarmService
+                )
         );
 
         return publisher;
