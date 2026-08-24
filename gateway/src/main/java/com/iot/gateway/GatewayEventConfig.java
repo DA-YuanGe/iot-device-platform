@@ -5,6 +5,7 @@ import com.iot.service.event.LoggingDeviceEventListener;
 import com.iot.service.status.DeviceStatusService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.RedisTemplate;
 
 /**
  * Gateway 事件组件配置。
@@ -12,24 +13,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class GatewayEventConfig {
 
-    /**
-     * 设备状态服务。
-     *
-     * 由 Gateway 显式注册为 Spring Bean，
-     * 供事件监听和 HTTP Controller 共同使用。
-     */
     @Bean
-    public DeviceStatusService deviceStatusService() {
+    public DeviceStatusService deviceStatusService(
+            RedisTemplate<String, Object> redisTemplate) {
 
-        return new DeviceStatusService();
+        return new DeviceStatusService(
+                redisTemplate
+        );
     }
 
-    /**
-     * 设备事件发布器。
-     */
     @Bean
     public DeviceEventPublisher deviceEventPublisher(
-            DeviceStatusService statusService) {
+            DeviceStatusService deviceStatusService) {
 
         DeviceEventPublisher publisher =
                 new DeviceEventPublisher();
@@ -39,7 +34,7 @@ public class GatewayEventConfig {
         );
 
         publisher.addListener(
-                statusService
+                deviceStatusService
         );
 
         return publisher;
