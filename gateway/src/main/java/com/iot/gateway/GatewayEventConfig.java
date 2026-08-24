@@ -2,6 +2,7 @@ package com.iot.gateway;
 
 import com.iot.service.event.DeviceEventPublisher;
 import com.iot.service.event.LoggingDeviceEventListener;
+import com.iot.service.status.DeviceStatusService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,6 +20,10 @@ public class GatewayEventConfig {
 
         publisher.addListener(
                 new LoggingDeviceEventListener()
+        );
+
+        publisher.addListener(
+                new DeviceStatusService()
         );
 
         return publisher;
