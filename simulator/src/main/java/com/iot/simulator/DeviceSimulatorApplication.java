@@ -9,60 +9,79 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 public class DeviceSimulatorApplication {
 
     public static void main(String[] args) throws Exception {
 
-        String deviceId = "DEVICE-001";
+        String[] deviceIds = {
+                "DEVICE-001",
+                "DEVICE-002",
+                "DEVICE-003"
+        };
 
         EventLoopGroup group =
                 new NioEventLoopGroup();
 
-        try {
+        Map<String, Channel> channels =
+                new HashMap<>();
 
-            final DeviceSimulatorHandler[] handlerHolder =
-                    new DeviceSimulatorHandler[1];
+        Map<String, DeviceSimulatorHandler> handlers =
+                new HashMap<>();
+
+        try {
 
             Bootstrap bootstrap =
                     new Bootstrap();
 
             bootstrap.group(group)
-                    .channel(NioSocketChannel.class)
-                    .handler(
-                            new ChannelInitializer<SocketChannel>() {
+                    .channel(NioSocketChannel.class);
 
-                                @Override
-                                protected void initChannel(
-                                        SocketChannel channel) {
+            for (String deviceId : deviceIds) {
 
-                                    DeviceSimulatorHandler handler =
-                                            new DeviceSimulatorHandler(
-                                                    deviceId
-                                            );
+                final DeviceSimulatorHandler[] handlerHolder =
+                        new DeviceSimulatorHandler[1];
 
-                                    handlerHolder[0] = handler;
+                bootstrap.handler(
+                        new ChannelInitializer<SocketChannel>() {
 
-                                    channel.pipeline()
-                                            .addLast(
-                                                    new DeviceMessageEncoder()
-                                            )
-                                            .addLast(handler);
-                                }
+                            @Override
+                            protected void initChannel(
+                                    SocketChannel channel) {
+
+                                DeviceSimulatorHandler handler =
+                                        new DeviceSimulatorHandler(
+                                                deviceId
+                                        );
+
+                                handlerHolder[0] = handler;
+
+                                channel.pipeline()
+                                        .addLast(
+                                                new DeviceMessageEncoder()
+                                        )
+                                        .addLast(handler);
                             }
-                    );
+                        }
+                );
 
-            System.out.println(
-                    "[" + deviceId +
-                    "] connecting to 127.0.0.1:9000..."
-            );
+                System.out.println(
+                        "[" + deviceId +
+                        "] connecting to 127.0.0.1:9000..."
+                );
 
-            Channel channel =
-                    bootstrap.connect(
-                            "127.0.0.1",
-                            9000
-                    ).sync().channel();
+                Channel channel =
+                        bootstrap.connect(
+                                "127.0.0.1",
+                                9000
+                        ).sync().channel();
+
+                channels.put(deviceId, channel);
+                handlers.put(deviceId, handlerHolder[0]);
+            }
 
             System.out.println(
                     "================================="
@@ -71,63 +90,103 @@ public class DeviceSimulatorApplication {
                     " IoT Device Simulator"
             );
             System.out.println(
-                    " Commands: pause / resume / exit"
+                    " Devices: DEVICE-001, DEVICE-002, DEVICE-003"
+            );
+            System.out.println(
+                    " Commands:"
+            );
+            System.out.println(
+                    "   pause DEVICE-001"
+            );
+            System.out.println(
+                    "   resume DEVICE-001"
+            );
+            System.out.println(
+                    "   exit"
             );
             System.out.println(
                     "================================="
             );
 
-            Thread commandThread =
-                    new Thread(
-                            () -> {
+            Scanner scanner =
+                    new Scanner(System.in);
 
-                                Scanner scanner =
-                                        new Scanner(System.in);
+            while (true) {
 
-                                while (channel.isActive()) {
+                if (!scanner.hasNextLine()) {
+                    break;
+                }
 
-                                    if (!scanner.hasNextLine()) {
-                                        break;
-                                    }
+                String command =
+                        scanner.nextLine()
+                                .trim();
 
-                                    String command =
-                                            scanner.nextLine()
-                                                    .trim()
-                                                    .toLowerCase();
+                if (command.isEmpty()) {
+                    continue;
+                }
 
-                                    if ("pause".equals(command)) {
+                String[] parts =
+                        command.split("\\s+");
 
-                                        handlerHolder[0]
-                                                .pauseHeartbeat();
+                if ("exit".equalsIgnoreCase(parts[0])) {
 
-                                    } else if ("resume".equals(command)) {
+                    break;
+                }
 
-                                        handlerHolder[0]
-                                                .resumeHeartbeat();
+                if (parts.length == 2) {
 
-                                    } else if ("exit".equals(command)) {
+                    String action =
+                            parts[0].toLowerCase();
 
-                                        channel.close();
-                                        break;
+                    String deviceId =
+                            parts[1].toUpperCase();
 
-                                    } else if (!command.isEmpty()) {
+                    DeviceSimulatorHandler handler =
+                            handlers.get(deviceId);
 
-                                        System.out.println(
-                                                "Unknown command: " +
-                                                command
-                                        );
-                                    }
-                                }
-                            },
-                            "device-command-thread"
+                    if (handler == null) {
+
+                        System.out.println(
+                                "Unknown device: " +
+                                deviceId
+                        );
+
+                        continue;
+                    }
+
+                    if ("pause".equals(action)) {
+
+                        handler.pauseHeartbeat();
+
+                    } else if ("resume".equals(action)) {
+
+                        handler.resumeHeartbeat();
+
+                    } else {
+
+                        System.out.println(
+                                "Unknown command: " +
+                                command
+                        );
+                    }
+
+                } else {
+
+                    System.out.println(
+                            "Usage: pause DEVICE-001 | " +
+                            "resume DEVICE-001 | exit"
                     );
-
-            commandThread.setDaemon(true);
-            commandThread.start();
-
-            channel.closeFuture().sync();
+                }
+            }
 
         } finally {
+
+            for (Channel channel : channels.values()) {
+
+                if (channel != null) {
+                    channel.close();
+                }
+            }
 
             group.shutdownGracefully();
         }
