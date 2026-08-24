@@ -4,6 +4,7 @@ import com.iot.service.event.DeviceEvent;
 import com.iot.service.event.DeviceEventListener;
 
 import java.util.Map;
+import org.springframework.stereotype.Service;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 负责维护设备当前运行状态，
  * 为后续数据库、Redis和监控接口提供统一状态入口。
  */
+@Service
 public class DeviceStatusService
         implements DeviceEventListener {
 

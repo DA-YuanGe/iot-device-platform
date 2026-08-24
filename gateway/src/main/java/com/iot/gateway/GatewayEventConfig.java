@@ -12,8 +12,24 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class GatewayEventConfig {
 
+    /**
+     * 设备状态服务。
+     *
+     * 由 Gateway 显式注册为 Spring Bean，
+     * 供事件监听和 HTTP Controller 共同使用。
+     */
     @Bean
-    public DeviceEventPublisher deviceEventPublisher() {
+    public DeviceStatusService deviceStatusService() {
+
+        return new DeviceStatusService();
+    }
+
+    /**
+     * 设备事件发布器。
+     */
+    @Bean
+    public DeviceEventPublisher deviceEventPublisher(
+            DeviceStatusService statusService) {
 
         DeviceEventPublisher publisher =
                 new DeviceEventPublisher();
@@ -23,7 +39,7 @@ public class GatewayEventConfig {
         );
 
         publisher.addListener(
-                new DeviceStatusService()
+                statusService
         );
 
         return publisher;
