@@ -6,11 +6,19 @@ import java.time.LocalDateTime;
 
 /**
  * 设备运行状态。
+ *
+ * ONLINE / OFFLINE 表示设备当前运行状态；
+ * HEARTBEAT / RECONNECTED 属于设备事件，不直接作为最终状态。
  */
 public class DeviceStatus {
 
     private final String deviceId;
 
+    /**
+     * 设备当前运行状态。
+     *
+     * 只允许 ONLINE / OFFLINE。
+     */
     private DeviceEventType state;
 
     private LocalDateTime connectedAt;
@@ -44,20 +52,54 @@ public class DeviceStatus {
         return lastEventTime;
     }
 
-    public void update(DeviceEventType eventType,
-                       LocalDateTime eventTime) {
+    /**
+     * 根据设备事件更新运行状态。
+     *
+     * ONLINE：
+     *   设备上线，状态变为 ONLINE。
+     *
+     * HEARTBEAT：
+     *   仅更新最后心跳时间，不改变当前运行状态。
+     *
+     * OFFLINE：
+     *   设备离线，状态变为 OFFLINE。
+     *
+     * RECONNECTED：
+     *   设备重新上线，状态恢复为 ONLINE。
+     */
+    public void update(
+            DeviceEventType eventType,
+            LocalDateTime eventTime) {
 
-        this.state = eventType;
-        this.lastEventTime = eventTime;
-
-        if (eventType == DeviceEventType.ONLINE
-                || eventType == DeviceEventType.RECONNECTED) {
-
-            this.connectedAt = eventTime;
+        if (eventType == null || eventTime == null) {
+            return;
         }
 
-        if (eventType == DeviceEventType.HEARTBEAT) {
-            this.lastHeartbeatTime = eventTime;
+        this.lastEventTime = eventTime;
+
+        switch (eventType) {
+
+            case ONLINE:
+                this.state = DeviceEventType.ONLINE;
+                this.connectedAt = eventTime;
+                break;
+
+            case HEARTBEAT:
+                this.lastHeartbeatTime = eventTime;
+                break;
+
+            case OFFLINE:
+                this.state = DeviceEventType.OFFLINE;
+                break;
+
+            case RECONNECTED:
+                this.state = DeviceEventType.ONLINE;
+                this.connectedAt = eventTime;
+                this.lastHeartbeatTime = eventTime;
+                break;
+
+            default:
+                break;
         }
     }
 }

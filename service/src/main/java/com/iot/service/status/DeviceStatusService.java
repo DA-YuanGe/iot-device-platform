@@ -170,12 +170,8 @@ public class DeviceStatusService
                 statuses.get(deviceId);
 
         return status != null
-                && (status.getState()
-                == DeviceEventType.ONLINE
-                || status.getState()
-                == DeviceEventType.RECONNECTED
-                || status.getState()
-                == DeviceEventType.HEARTBEAT);
+                && status.getState()
+                == DeviceEventType.ONLINE;
     }
 
     /**

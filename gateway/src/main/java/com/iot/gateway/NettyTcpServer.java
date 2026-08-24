@@ -1,7 +1,10 @@
 package com.iot.gateway;
 
+import com.iot.gateway.auth.DeviceAuthService;
 import com.iot.protocol.DeviceMessageDecoder;
+import com.iot.protocol.DeviceMessageEncoder;
 import com.iot.service.event.DeviceEventPublisher;
+import com.iot.service.telemetry.TelemetryService;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -20,10 +23,18 @@ public class NettyTcpServer {
 
     private final DeviceEventPublisher eventPublisher;
 
+    private final TelemetryService telemetryService;
+
+    private final DeviceAuthService authService;
+
     public NettyTcpServer(
-            DeviceEventPublisher eventPublisher) {
+            DeviceEventPublisher eventPublisher,
+            DeviceAuthService authService,
+            TelemetryService telemetryService) {
 
         this.eventPublisher = eventPublisher;
+        this.authService = authService;
+        this.telemetryService = telemetryService;
     }
 
     public void start() throws InterruptedException {
@@ -58,11 +69,16 @@ public class NettyTcpServer {
 
                                     channel.pipeline()
                                             .addLast(
+                                                    new DeviceMessageEncoder()
+                                            )
+                                            .addLast(
                                                     new DeviceMessageDecoder()
                                             )
                                             .addLast(
                                                     new DeviceConnectionHandler(
-                                                            eventPublisher
+                                                            eventPublisher,
+                                                            authService,
+                                                            telemetryService
                                                     )
                                             );
                                 }

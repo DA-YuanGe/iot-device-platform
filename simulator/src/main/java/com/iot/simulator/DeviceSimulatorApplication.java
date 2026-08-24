@@ -1,6 +1,7 @@
 package com.iot.simulator;
 
 import com.iot.protocol.DeviceMessageEncoder;
+import com.iot.protocol.DeviceMessageDecoder;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -60,6 +61,9 @@ public class DeviceSimulatorApplication {
                                 handlerHolder[0] = handler;
 
                                 channel.pipeline()
+                                        .addLast(
+                                                new DeviceMessageDecoder()
+                                        )
                                         .addLast(
                                                 new DeviceMessageEncoder()
                                         )
