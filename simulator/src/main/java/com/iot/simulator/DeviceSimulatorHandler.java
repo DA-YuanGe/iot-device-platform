@@ -82,20 +82,32 @@ public class DeviceSimulatorHandler
      */
     private String getDeviceSecret(String deviceId) {
 
-        return switch (deviceId) {
+        if (deviceId.startsWith("DEVICE-")) {
 
-            case "DEVICE-001" ->
-                    "iot-demo-001";
+            return switch (deviceId) {
 
-            case "DEVICE-002" ->
-                    "iot-demo-002";
+                case "DEVICE-001" ->
+                        "iot-demo-001";
 
-            case "DEVICE-003" ->
-                    "iot-demo-003";
+                case "DEVICE-002" ->
+                        "iot-demo-002";
 
-            default ->
-                    "invalid-secret";
-        };
+                case "DEVICE-003" ->
+                        "iot-demo-003";
+
+                default ->
+                        "invalid-secret";
+            };
+        }
+
+        if (deviceId.startsWith("TEST-")) {
+
+            String number = deviceId.substring("TEST-".length());
+
+            return "iot-test-" + number.toLowerCase();
+        }
+
+        return "invalid-secret";
     }
 
     @Override

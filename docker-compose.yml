@@ -1,0 +1,67 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: iot-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-MySQL@123456}
+      MYSQL_DATABASE: iot_platform
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  redis:
+    image: redis:7
+    container_name: iot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: gateway
+    container_name: iot-gateway
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-MySQL@123456}
+    ports:
+      - "9000:9000"
+
+  service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: service
+    container_name: iot-service
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-MySQL@123456}
+
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: simulator
+    container_name: iot-simulator
+    depends_on:
+      - gateway
+    command: ["100"]
+
+volumes:
+  mysql-data:
+  redis-data:
