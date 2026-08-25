@@ -1,6 +1,5 @@
 package com.iot.gateway;
 
-import com.iot.gateway.auth.DeviceAuthService;
 import com.iot.service.alarm.DeviceAlarmEventListener;
 import com.iot.service.alarm.DeviceAlarmService;
 import com.iot.service.event.DeviceEventPublisher;
@@ -18,10 +17,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 @Configuration
 public class GatewayEventConfig {
 
-    @Bean
-    public DeviceAuthService deviceAuthService() {
-        return new DeviceAuthService();
-    }
 
     @Bean
     public TelemetryService telemetryService(

@@ -1,20 +1,24 @@
 package com.iot.gateway.auth;
 
-import java.util.Map;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
 
 /**
  * 设备身份认证服务。
  *
- * 当前使用内存中的设备凭证模拟设备注册中心。
- * 后续接入 MySQL 后可替换为数据库查询。
+ * 设备凭证从 MySQL 查询，
+ * 不再使用内存中的固定设备凭证。
  */
+@Service
 public class DeviceAuthService {
 
-    private final Map<String, String> deviceSecrets = Map.of(
-            "DEVICE-001", "iot-demo-001",
-            "DEVICE-002", "iot-demo-002",
-            "DEVICE-003", "iot-demo-003"
-    );
+    private final JdbcTemplate jdbcTemplate;
+
+    public DeviceAuthService(
+            JdbcTemplate jdbcTemplate) {
+
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     /**
      * 验证设备身份。
@@ -28,10 +32,20 @@ public class DeviceAuthService {
             return false;
         }
 
-        String expectedSecret =
-                deviceSecrets.get(deviceId);
+        String sql =
+                "SELECT COUNT(*) " +
+                "FROM device " +
+                "WHERE device_id = ? " +
+                "AND device_secret = ?";
 
-        return expectedSecret != null
-                && expectedSecret.equals(secret);
+        Integer count =
+                jdbcTemplate.queryForObject(
+                        sql,
+                        Integer.class,
+                        deviceId,
+                        secret
+                );
+
+        return count != null && count > 0;
     }
 }
