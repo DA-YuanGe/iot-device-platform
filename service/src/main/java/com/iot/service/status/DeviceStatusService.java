@@ -16,7 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 设备状态服务。
  *
  * 负责维护设备当前运行状态，
- * 同时将实时状态和事件历史同步到 Redis。
+ * 同时将实时状态和事件历史同步到 Redis，
+ * 并将设备当前运行状态同步到 MySQL。
  */
 public class DeviceStatusService
         implements DeviceEventListener {
@@ -34,10 +35,14 @@ public class DeviceStatusService
 
     private final RedisTemplate<String, Object> redisTemplate;
 
+    private final DeviceStatusRepository statusRepository;
+
     public DeviceStatusService(
-            RedisTemplate<String, Object> redisTemplate) {
+            RedisTemplate<String, Object> redisTemplate,
+            DeviceStatusRepository statusRepository) {
 
         this.redisTemplate = redisTemplate;
+        this.statusRepository = statusRepository;
     }
 
     @Override
@@ -62,6 +67,31 @@ public class DeviceStatusService
 
         saveToRedis(status);
         saveEventToRedis(event);
+
+        /*
+         * 设备上线或重新连接：
+         * 同步 ONLINE 和最后上线时间到 MySQL。
+         */
+        if (event.getType() == DeviceEventType.ONLINE
+                || event.getType() == DeviceEventType.RECONNECTED) {
+
+            statusRepository.markOnline(
+                    event.getDeviceId(),
+                    event.getEventTime()
+            );
+        }
+
+        /*
+         * 设备离线：
+         * 同步 OFFLINE 和最后离线时间到 MySQL。
+         */
+        if (event.getType() == DeviceEventType.OFFLINE) {
+
+            statusRepository.markOffline(
+                    event.getDeviceId(),
+                    event.getEventTime()
+            );
+        }
 
         System.out.println(
                 "[STATUS] device=" +

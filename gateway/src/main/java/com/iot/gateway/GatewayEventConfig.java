@@ -4,6 +4,7 @@ import com.iot.service.alarm.DeviceAlarmEventListener;
 import com.iot.service.alarm.DeviceAlarmService;
 import com.iot.service.event.DeviceEventPublisher;
 import com.iot.service.event.LoggingDeviceEventListener;
+import com.iot.service.status.DeviceStatusRepository;
 import com.iot.service.status.DeviceStatusService;
 import com.iot.service.telemetry.TelemetryRepository;
 import com.iot.service.telemetry.TelemetryService;
@@ -17,7 +18,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 @Configuration
 public class GatewayEventConfig {
 
-
     @Bean
     public TelemetryService telemetryService(
             TelemetryRepository telemetryRepository) {
@@ -29,10 +29,12 @@ public class GatewayEventConfig {
 
     @Bean
     public DeviceStatusService deviceStatusService(
-            RedisTemplate<String, Object> redisTemplate) {
+            RedisTemplate<String, Object> redisTemplate,
+            DeviceStatusRepository statusRepository) {
 
         return new DeviceStatusService(
-                redisTemplate
+                redisTemplate,
+                statusRepository
         );
     }
 

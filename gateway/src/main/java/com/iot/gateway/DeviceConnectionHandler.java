@@ -297,9 +297,34 @@ public class DeviceConnectionHandler
         );
 
         if (deviceId != null) {
-            sessionManager.remove(
-                    deviceId,
-                    ctx.channel()
+
+        /*
+         * 只有当前有效会话断开时，
+         * 才发布 OFFLINE。
+         *
+         * 防止旧连接断开时误将新连接标记为 OFFLINE。
+         */
+        var currentSession =
+                sessionManager.getSession(deviceId);
+
+        boolean currentChannel =
+                currentSession != null
+                && currentSession.getChannel()
+                        == ctx.channel();
+
+        if (currentChannel) {
+
+            eventPublisher.publish(
+                    new DeviceEvent(
+                            deviceId,
+                            DeviceEventType.OFFLINE
+                    )
+            );
+        }
+
+        sessionManager.remove(
+                deviceId,
+                ctx.channel()
             );
         }
     }
